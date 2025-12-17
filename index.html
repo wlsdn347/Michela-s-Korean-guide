@@ -69,9 +69,10 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: calc(100vh - 230px);
+      max-height: 260px;
       overflow-y: auto;
       padding-right: 4px;
+      margin-bottom: 18px;
     }
     .track {
       display: flex;
@@ -128,12 +129,93 @@
     .track.active .play-btn {
       color: #dcfce7;
     }
+    .record-section {
+      margin-top: 8px;
+      padding: 14px 14px 12px;
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(75, 85, 99, 0.7);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .record-header {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .record-sub {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    .record-controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .btn {
+      flex: 1;
+      border: none;
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+      color: #022c22;
+    }
+    .btn-secondary {
+      background: #020617;
+      color: #e5e7eb;
+      border: 1px solid #4b5563;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    .my-rec-title {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+    .my-rec-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 160px;
+      overflow-y: auto;
+      padding-right: 4px;
+      margin-top: 4px;
+    }
+    .my-rec-item {
+      font-size: 13px;
+      color: #e5e7eb;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .my-rec-item button {
+      font-size: 11px;
+      border-radius: 999px;
+      border: none;
+      padding: 4px 8px;
+      background: #111827;
+      color: #e5e7eb;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Korean records · Voice</h1>
-    <div class="subtitle">모바일에서 바로 재생할 수 있는 음성 모음입니다.</div>
+    <div class="subtitle">모바일에서 바로 재생하고, 내 목소리도 녹음해서 비교해 보세요.</div>
   </header>
 
   <div class="card">
@@ -144,8 +226,20 @@
     </div>
   </div>
 
-  <div class="list-title">전체 트랙</div>
+  <div class="list-title">질문 목록</div>
   <div class="track-list" id="trackList"></div>
+
+  <div class="record-section">
+    <div class="record-header">내 목소리로 따라 말해 보기</div>
+    <div class="record-sub">현재 선택된 질문을 보고 그대로 말해 보세요. 녹음은 이 브라우저 안에서만 저장됩니다.</div>
+    <div class="record-controls">
+      <button id="startRec" class="btn btn-primary">현재 질문 녹음 시작</button>
+      <button id="stopRec" class="btn btn-secondary" disabled>정지</button>
+    </div>
+    <audio id="myLastRec" controls style="margin-top:8px; display:none;"></audio>
+    <div class="my-rec-title" id="myRecTitle" style="display:none;">내 최근 녹음</div>
+    <div class="my-rec-list" id="myRecList"></div>
+  </div>
 
   <script>
     const tracks = [
@@ -167,7 +261,19 @@
     const player = document.getElementById('player');
     const nowPlayingEl = document.getElementById('nowPlaying');
 
+    const startRecBtn = document.getElementById('startRec');
+    const stopRecBtn = document.getElementById('stopRec');
+    const myLastRecAudio = document.getElementById('myLastRec');
+    const myRecTitle = document.getElementById('myRecTitle');
+    const myRecList = document.getElementById('myRecList');
+
+    let currentTrack = tracks[0];
+    let mediaRecorder = null;
+    let recChunks = [];
+    const myRecordings = [];
+
     function setTrack(t, item) {
+      currentTrack = t;
       document.querySelectorAll('.track').forEach(el => el.classList.remove('active'));
       if (item) item.classList.add('active');
       player.src = t.file;
@@ -212,6 +318,77 @@
 
       listEl.appendChild(item);
     });
+
+    async function startRecording() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        recChunks = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) recChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recChunks, { type: 'audio/webm' });
+          const url = URL.createObjectURL(blob);
+          const title = currentTrack.title + ' · 내 녹음 ' + (myRecordings.length + 1);
+          const record = { url, title };
+          myRecordings.push(record);
+          renderMyRecordings();
+        };
+
+        mediaRecorder.start();
+        startRecBtn.disabled = true;
+        stopRecBtn.disabled = false;
+        startRecBtn.textContent = '녹음 중...';
+      } catch (e) {
+        alert('마이크 권한이 필요합니다. 브라우저 설정에서 허용해 주세요.');
+        console.error(e);
+      }
+    }
+
+    function stopRecording() {
+      if (!mediaRecorder) return;
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(t => t.stop());
+      mediaRecorder = null;
+      startRecBtn.disabled = false;
+      stopRecBtn.disabled = true;
+      startRecBtn.textContent = '현재 질문 녹음 시작';
+    }
+
+    function renderMyRecordings() {
+      if (myRecordings.length === 0) return;
+      myRecTitle.style.display = 'block';
+      myLastRecAudio.style.display = 'block';
+
+      myRecList.innerHTML = '';
+      myRecordings.forEach((r, idx) => {
+        const item = document.createElement('div');
+        item.className = 'my-rec-item';
+
+        const span = document.createElement('div');
+        span.textContent = (idx + 1) + '. ' + r.title;
+
+        const playBtn = document.createElement('button');
+        playBtn.textContent = '듣기';
+        playBtn.addEventListener('click', () => {
+          myLastRecAudio.src = r.url;
+          myLastRecAudio.play();
+        });
+
+        item.appendChild(span);
+        item.appendChild(playBtn);
+        myRecList.appendChild(item);
+      });
+
+      const last = myRecordings[myRecordings.length - 1];
+      myLastRecAudio.src = last.url;
+    }
+
+    startRecBtn.addEventListener('click', startRecording);
+    stopRecBtn.addEventListener('click', stopRecording);
   </script>
 </body>
 </html>
