@@ -330,7 +330,12 @@
         };
 
         mediaRecorder.onstop = () => {
-          const blob = new Blob(recChunks, { type: 'audio/webm' });
+          // 브라우저가 제공한 타입을 우선 사용 (Safari 등 webm 미지원 브라우저 대응)
+          const chunkType = recChunks[0]?.type;
+          const mimeType = chunkType && chunkType !== 'application/octet-stream'
+            ? chunkType
+            : (mediaRecorder && mediaRecorder.mimeType) || 'audio/webm';
+          const blob = new Blob(recChunks, { type: mimeType });
           const url = URL.createObjectURL(blob);
           const title = currentTrack.title + ' · 내 녹음 ' + (myRecordings.length + 1);
           const record = { url, title };
