@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Korean Records - Voice Player</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+      padding: 16px 14px 24px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #9ca3af;
+    }
+    .card {
+      background: radial-gradient(circle at top left, #1e293b, #020617);
+      border-radius: 18px;
+      padding: 14px 14px 10px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+    }
+    .now-playing-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+    .now-playing-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #f9fafb;
+      margin-bottom: 10px;
+    }
+    .audio-wrap {
+      width: 100%;
+    }
+    audio {
+      width: 100%;
+      border-radius: 999px;
+    }
+    .list-title {
+      margin-top: 18px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #9ca3af;
+    }
+    .track-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: calc(100vh - 230px);
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .track {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.08s ease, border-color 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .track:active {
+      transform: scale(0.98);
+    }
+    .track.active {
+      background: linear-gradient(90deg, #0f766e, #22c55e);
+      border-color: rgba(34, 197, 94, 0.8);
+    }
+    .track-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #cbd5f5;
+      font-weight: 600;
+    }
+    .track.active .badge {
+      background: rgba(15, 23, 42, 0.9);
+      color: #bbf7d0;
+    }
+    .name {
+      font-size: 14px;
+      color: #e5e7eb;
+    }
+    .track.active .name {
+      color: #ecfdf5;
+      font-weight: 600;
+    }
+    .play-btn {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    .track.active .play-btn {
+      color: #dcfce7;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Korean records · Voice</h1>
+    <div class="subtitle">모바일에서 바로 재생할 수 있는 음성 모음입니다.</div>
+  </header>
+
+  <div class="card">
+    <div class="now-playing-label">Now playing</div>
+    <div class="now-playing-title" id="nowPlaying">1. 무슨 일을 해요? 무슨 영화를 자주 봐요?</div>
+    <div class="audio-wrap">
+      <audio id="player" controls></audio>
+    </div>
+  </div>
+
+  <div class="list-title">전체 트랙</div>
+  <div class="track-list" id="trackList"></div>
+
+  <script>
+    const tracks = [
+      { file: 'voice/01.m4a', label: '01', title: '1. 무슨 일을 해요? 무슨 영화를 자주 봐요?' },
+      { file: 'voice/02.m4a', label: '02', title: '2. 이번 휴일에 뭐 해요? 그럼 주말에는 뭐 하는 것을 좋아해요?' },
+      { file: 'voice/03.m4a', label: '03', title: '3. 오늘 저녁에 뭐 해요? 그럼 오늘 몇 시쯤에 어디에서 만날까요?' },
+      { file: 'voice/04.m4a', label: '04', title: '4. 학교에 갈 때 뭘 입어요? 박물관 인턴을 할 때는 어떤 옷을 입을 거예요?' },
+      { file: 'voice/05.m4a', label: '05', title: '5. 미켈라씨 방은 어때요? 박물관하고 가까워요?' },
+      { file: 'voice/06.m4a', label: '06', title: '6. 미켈라씨는 주말에 어디에 자주 가요? 거기엔 뭐가 있어요?' },
+      { file: 'voice/07.m4a', label: '07', title: '7. 언제 스트레스를 받아요? 그럼 증상이 어때요?' },
+      { file: 'voice/08.m4a', label: '08', title: '8. 미켈라씨는 고치고 싶은 습관이 있나요? 어떻게 하면 고칠 수 있어요?' },
+      { file: 'voice/09.m4a', label: '09', title: '9. 오늘은 어떤 안 매운 음식을 시킬까요?' },
+      { file: 'voice/10.m4a', label: '10', title: '10. 미켈라씨가 좋아하는 신발은 무슨 색이예요? 요즘 어떤 신발을 사고 싶어요?' },
+      { file: 'voice/11.m4a', label: '11', title: '11. 이번에 며칠 동안 여행을 할 거예요? 어디에 갈 거예요?' },
+      { file: 'voice/12.m4a', label: '12', title: '12. 작년 여름에는 어디를 여행해 봤어요? 가서 뭘 했어요?' }
+    ];
+
+    const listEl = document.getElementById('trackList');
+    const player = document.getElementById('player');
+    const nowPlayingEl = document.getElementById('nowPlaying');
+
+    function setTrack(t, item) {
+      document.querySelectorAll('.track').forEach(el => el.classList.remove('active'));
+      if (item) item.classList.add('active');
+      player.src = t.file;
+      nowPlayingEl.textContent = t.title;
+      player.play().catch(() => {
+        // 모바일에서 자동재생 막힐 수 있어서 에러는 무시
+      });
+    }
+
+    tracks.forEach((t, idx) => {
+      const item = document.createElement('div');
+      item.className = 'track';
+
+      const left = document.createElement('div');
+      left.className = 'track-left';
+
+      const badge = document.createElement('div');
+      badge.className = 'badge';
+      badge.textContent = t.label;
+
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = t.title;
+
+      left.appendChild(badge);
+      left.appendChild(name);
+
+      const btn = document.createElement('div');
+      btn.className = 'play-btn';
+      btn.textContent = '재생';
+
+      item.appendChild(left);
+      item.appendChild(btn);
+
+      item.addEventListener('click', () => setTrack(t, item));
+
+      if (idx === 0) {
+        item.classList.add('active');
+        player.src = t.file;
+        nowPlayingEl.textContent = t.title;
+      }
+
+      listEl.appendChild(item);
+    });
+  </script>
+</body>
+</html>
